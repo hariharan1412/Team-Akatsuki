@@ -58,5 +58,5 @@ class GameBoard:
         return self.Board
 
 
-newGame = GameBoard('F:/Akatsuki/Team-Akatsuki/found0.json')
+newGame = GameBoard('./found0.json')
 newGame.display()
