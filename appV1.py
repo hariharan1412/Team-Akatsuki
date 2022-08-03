@@ -3,6 +3,7 @@ from curses import wrapper
 import curses
 import json
 import random
+from turtle import color
 
 
 class GameBoard:
@@ -115,66 +116,80 @@ class Engine(GameBoard):
 
     def main(self, stdscr):
         curses.init_pair(1, curses.COLOR_MAGENTA, curses.COLOR_MAGENTA)
-        curses.init_pair(2, curses.COLOR_RED, curses.COLOR_RED)
         curses.init_pair(3, curses.COLOR_GREEN, curses.COLOR_GREEN)
         curses.init_pair(4, curses.COLOR_BLUE, curses.COLOR_BLUE)
-        curses.init_pair(5, curses.COLOR_CYAN, curses.COLOR_CYAN)
 
+        curses.init_pair(2, curses.COLOR_RED, curses.COLOR_RED)
+        curses.init_pair(5, curses.COLOR_CYAN, curses.COLOR_CYAN)
         curses.init_pair(6, curses.COLOR_YELLOW, curses.COLOR_YELLOW)
+
         curses.init_pair(7, curses.COLOR_RED, curses.COLOR_BLACK)
         curses.init_pair(8, curses.COLOR_BLUE, curses.COLOR_BLACK)
+        curses.init_pair(9, curses.COLOR_WHITE, curses.COLOR_WHITE)
+        curses.init_pair(10, curses.COLOR_RED, curses.COLOR_GREEN)
         colors = {
             'w': curses.color_pair(2),
             'o': curses.color_pair(6),
             'm':  curses.color_pair(5),
             'a': curses.color_pair(7),
-            'b': curses.color_pair(8)
+            'b': curses.color_pair(8),
+            'bomb': curses.color_pair(10)
         }
 
         stdscr.clear()
-        stdscr.addstr(2, 35, 'Information')
-        stdscr.addstr(4, 35, '  ', colors['w'])
-        stdscr.addstr(4, 40, 'WOOD')
-        stdscr.addstr(6, 35, '  ', colors['o'])
-        stdscr.addstr(6, 40, 'STONE')
-        stdscr.addstr(8, 35, '  ', colors['m'])
-        stdscr.addstr(8, 40, 'METAL')
-        stdscr.addstr(10, 35, 'a', colors['a'])
-        stdscr.addstr(10, 40, 'Team A')
-        stdscr.addstr(12, 35, 'b', colors['b'])
-        stdscr.addstr(12, 40, 'Team B')
+        yAxix = 70
+        stdscr.addstr(2, yAxix, 'Information')
+        stdscr.addstr(4, yAxix, '  ', colors['w'])
+        stdscr.addstr(4, yAxix+5, 'WOOD')
+        stdscr.addstr(6, yAxix, '  ', colors['o'])
+        stdscr.addstr(6, yAxix+5, 'STONE')
+        stdscr.addstr(8, yAxix, '  ', colors['m'])
+        stdscr.addstr(8, yAxix+5, 'METAL')
+        stdscr.addstr(10, yAxix, 'a', colors['a'])
+        stdscr.addstr(10, yAxix+5, 'Team A')
+        stdscr.addstr(12, yAxix, 'b', colors['b'])
+        stdscr.addstr(12, yAxix+5, 'Team B')
         stdscr.refresh()
 
-        newWin = curses.newwin(5, 20, 2, 2)
+        newWin = curses.newwin(5, 20, 2, 10)
         newWin.addstr('Bombardland Game')
         newWin.refresh()
 
         span = 10
+        dSpan = 2
         for i in self.Board.values():
             if i['type'] == 'agent':
                 x, y = i['coordinates']
-                stdscr.addstr(x+span, y+span, i['unit_id'],
+                x = x if x == 0 else x*dSpan
+                y = abs(y-14)
+                stdscr.addstr(y+span, x+span, i['unit_id'],
                               colors[i['agent_id']] | curses.A_BOLD)
             else:
                 x, y = i['x'], i['y']
-                stdscr.addstr(x+span, y+span, ' ', colors[i['type']])
+                x = x if x == 0 else x*dSpan
+                y = abs(y-14)
+                stdscr.addstr(y+span, x+span,  '  ', colors[i['type']])
+
             stdscr.refresh()
 
         a = ['up', 'right', 'down', 'left']
         un = list(self.units.keys())
         for i in range(100):
-            time.sleep(0.1)
-            # unit = random.choice(un)
+            # time.sleep(0.1)
+            unit = random.choice(un)
             action = random.choice(a)
             # unit = stdscr.getkey()
 
-            unit = 'e'
+            # unit = 'e'
             # action = 'down'
             m = self.move(unit, action)
             if m:
                 x, y, nx, ny, agId = m
-                stdscr.addstr(x+span, y+span, ' ')
-                stdscr.addstr(nx+span, ny+span, unit,
+                x = x if x == 0 else x*dSpan
+                nx = nx if nx == 0 else nx*dSpan
+                y, ny = abs(y-14), abs(ny-14)
+                stdscr.addstr(y+span, x+span, ' b', colors['bomb'])
+                stdscr.addstr(ny+span, nx+span,  unit,
                               colors[agId] | curses.A_BOLD)
                 stdscr.refresh()
 
@@ -185,7 +200,7 @@ class Engine(GameBoard):
                 newWin.clear()
                 newWin.addstr(f'Bombardland Game\n\n{unit} - Cannot move')
                 newWin.refresh()
-
+        print(self.units)
         stdscr.getch()
 
 
