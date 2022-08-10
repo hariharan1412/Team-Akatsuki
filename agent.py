@@ -1,9 +1,11 @@
+from locale import currency
 from typing import Union
 from game_state import GameState
 import asyncio
 import random
 import os
 import time
+from queue import PriorityQueue
 
 uri = os.environ.get(
     'GAME_CONNECTION_STRING') or "ws://127.0.0.1:3000/?role=agent&agentId=agentId&name=defaultName"
@@ -33,17 +35,14 @@ class node:
 
         if self.row < 14 and grid[self.row + 1][self.col].type == 'free': #UP
             # print("UP" , self.row , self.col , grid[self.row + 1][self.col].type ,  grid[self.row + 1][self.col].id)
-
             self.neibours.append(grid[self.row + 1][self.col])
 
         if self.col < 14 and grid[self.row][self.col + 1].type == 'free': #RIGHT
             # print("RIGHT" , self.row , self.col , grid[self.row][self.col + 1].type ,  grid[self.row][self.col + 1].id)
-
             self.neibours.append(grid[self.row][self.col + 1])
 
         if self.col > 0 and grid[self.row ][self.col - 1].type == 'free': #LEFT
             # print("LEFT" , self.row , self.col ,  grid[self.row ][self.col - 1].type , grid[self.row ][self.col - 1].id)
-
             self.neibours.append(grid[self.row][self.col - 1])
 
 class board():
@@ -79,7 +78,7 @@ class board():
 
         # self.h = lambda start , end : abs(start.row - end.row) + abs(start.col - end.col)
         # print(self.obstacle)
-
+        
         self.grid = [['' for i in range(15)] for j in range(15)] #INITIALIZE EMPTY GRID
 
         for i in range(14 , -1 , -1):
@@ -137,21 +136,29 @@ class board():
 
     def path_finding(self):
         
-        self.open_set = []
-
         self.path = {}
 
-        self.open_set.append(self.start)
-        
+        # self.open_set = []
+        count = 0
+        self.open_set = PriorityQueue()
+
+        # self.open_set.append(self.start)
+        self.open_set.put((count , self.start))
+
         self.start.f_score = self.h(self.start , self.end)
         self.start.g_score = 0
 
-        while self.open_set:
+        open_set_hash = {self.start}
+        # while self.open_set:
+        while not self.open_set.empty():
+
             
-            current = self.open_set[0]
-            for i in self.open_set:
-                if i.f_score < current.f_score:
-                    current = i 
+            # current = self.open_set[0]
+            # for i in self.open_set:
+                # if i.f_score < current.f_score:
+                    # current = i 
+            current = self.open_set.get()[1]
+            open_set_hash.remove(current)
 
             # print("current : " , current.id )
             # print("current neibour : " , current.neibours )
@@ -163,7 +170,7 @@ class board():
                 print(" REACHED ")
                 return action
 
-            self.open_set.remove(current)
+            # self.open_set.remove(current)
 
             for neibour in current.neibours:
                 
@@ -176,8 +183,12 @@ class board():
                     neibour.g_score = temp_g_score
                     neibour.f_score = temp_g_score + self.h(neibour , self.end)
                     
-                    if neibour not in self.open_set:
-                        self.open_set.append(neibour)
+                    # if neibour not in self.open_set:
+                    if neibour not in open_set_hash:
+                        count += 1 
+                        self.open_set.put((count , neibour))
+                        open_set_hash.add(neibour)
+                        # self.open_set.append(neibour)
         
         print("CAN'T REACH")
         return False
@@ -217,12 +228,14 @@ class Agent():
         #TODO : a function which returns two values , a Action and which unit
         #TODO : Graph position is different 
 
+        #TODO : need to add custom end path to route
+
         for unit_id in my_units:
             # unit_id = 'd'
             
             b = board(self._client._state , my_units , unit_id)
             # unit_id = 'd'
-#           send each unit a random action
+            #send each unit a random action
             # action = random.choice(actions)
             # print(self._client._state['unit_state']['d']['coordinates'])
             # print(action)
