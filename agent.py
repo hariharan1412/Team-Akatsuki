@@ -1,13 +1,25 @@
 #I'M TOO FAR YOUNG TO WORRY ABOUT MY FAILURES.
+# from typing import Union
+
+# from game_state import GameState
+# import asyncio
+# import random
+# import os
+# import time
+# from queue import PriorityQueue
+# from operator import itemgetter
+# import numpy as np
 
 from typing import Union
+
 from game_state import GameState
 import asyncio
 import random
 import os
 import time
 from queue import PriorityQueue
-import numpy as np 
+from operator import itemgetter
+import numpy as np
 
 uri = os.environ.get(
     'GAME_CONNECTION_STRING') or "ws://127.0.0.1:3000/?role=agent&agentId=agentId&name=defaultName"
@@ -33,6 +45,25 @@ class player:
         self.blast_diameter = None
         self.invulnerability = 0
         
+        self.next_node_pos = None
+
+    def next_node(self , action):
+        
+        if action == 'left':
+            self.next_node_pos = self.id - 1
+        
+        elif action == 'right':
+            self.next_node_pos = self.id + 1 
+        
+        elif action == 'up':
+            self.next_node_pos = self.id - 15
+
+        elif action == 'down':
+            self.next_node_pos = self.id + 15
+        
+        elif action == 'bomb':
+            self.next_node_pos = self.id
+
 
 class node:
     
@@ -47,10 +78,8 @@ class node:
     def board_reset(self):
         
         self.obj_type = '.' #Type of This node i.e ENTITY type (Refer line : 53)
-        self.weight = 0.1
+        self.weight = 0.05
         
-        # self.bomb_is_here = False
-
         self.bombs = None
         self.hp = None
         self.expires = None
@@ -105,6 +134,9 @@ class Gameboard:
 
     def update_board(self , gameState): #Everytime the board get updated with current values 
 
+        self.ammo_found = False
+        self.ammos = []
+
         self.gameState = gameState 
 
         for i in range(225):
@@ -127,25 +159,34 @@ class Gameboard:
             elif i['type'] == 'm':
                 self.grid[l_].weight = float("inf")
             
+            elif i['type'] == 'a':
+            
+                self.ammo_found = True
+                self.ammos.append(self.grid[l_])
+
+                self.grid[l_].expires = i['expires']
+                self.grid[l_].weight = 0.05
+
             elif i['type'] == 'b':
 
+                self.grid[l_].weight = float("inf")
                 self.grid[l_].blast_diameter = i['blast_diameter']
                 self.grid[l_].expires = i['expires']
 
-                # self.grid[l_].weight = float("inf")
-                # self.grid[l_].bomb_is_here = True
-        
         # BOTs
         # OPPONENT TEAM => c , e , g 
         # OUR TEAM      => d , f , h 
         for i in 'cdefgh':
             
             x_ = self.maja(self.gameState['unit_state'][i]['coordinates'])
+            l_ = self.linear_fucn(x_)
+
+            self.grid[l_].weight = float("inf")
             
             self.p[i].row = x_[0]
             self.p[i].col = x_[1]
 
-            self.p[i].id  = self.linear_fucn(x_)
+            self.p[i].id  = l_
             
             self.p[i].hp = self.gameState['unit_state'][i]['hp']
             self.p[i].bombs = self.gameState['unit_state'][i]['inventory']['bombs']
@@ -163,8 +204,16 @@ class Gameboard:
          
             print(self.grid[i].obj_type , end=' ')
 
+    def sort_ammo(self , unit):
+        
+        # self.ammos
+        self.prior_list = [self.h(self.p[unit] , i) for i in self.ammos]
 
-    def take_action(self , came_from , current):
+        return self.ammos[self.prior_list.index(min(self.prior_list))].id
+        # inputlist.sort(key=itemgetter(1), reverse=True)
+        
+
+    def take_action(self , came_from , current , unit , priority):
         
         path = []
         while current in came_from:
@@ -176,44 +225,45 @@ class Gameboard:
         path.insert(0 , self.end)
         n = path[len(path)-1]
         
-        
-        # actions = ["up", "down", "left", "right", "bomb", "detonate"]
-        
         try:
             print(n.row , n.col)
     
-            if n.obj_type == 'w':
-
+            if n.obj_type == 'w' and priority:
+                print(unit , " => BOMB")
+                self.p[unit].next_node(actions[4])
                 return actions[4]
             
             else:    
 
                 if n.col > self.start.col: 
-                    print("RIGTH")
+                    print(unit , " => RIGTH")
+                    self.p[unit].next_node(actions[3])
                     return actions[3]
 
                 elif n.col < self.start.col:
-                    print("LEFT")
+                    print(unit , " => LEFT")
+                    self.p[unit].next_node(actions[2])
                     return actions[2]
 
                 elif n.row > self.start.row: 
-                    print("DOWN")
+                    print(unit , " =>DOWN")
+                    self.p[unit].next_node(actions[1])
                     return actions[1]
 
                 elif n.row < self.start.row: 
-                    print("UP")
+                    print(unit , " =>UP")
+                    self.p[unit].next_node(actions[0])
                     return actions[0]
 
         except Exception as e:
             print("ERROR IS : " , e)
 
-    def path_finding(self , unit , end , priority=None): 
+    def path_finding(self , unit , end , priority=0): 
 
-        # self.start = self.grid[self.linear_fucn(self.maja(self.gameState['unit_state'][unit]['coordinates']))]#UNIT postion
         self.start = self.grid[self.p[unit].id]#UNIT postion
 
         self.end = self.grid[end]
-
+        
         self.path = {}
 
         count = 0
@@ -233,7 +283,7 @@ class Gameboard:
             current.add_neibour(self.grid) 
 
             if current == self.end:
-                action = self.take_action(self.path, current)
+                action = self.take_action(self.path, current , unit , priority)
                 print(" REACHED ")
                 return action
 
@@ -291,38 +341,27 @@ class Agent():
 
 
         for unit_id in my_units:
-            # unit_id = 'f'
             
             self.board.update_board(self._client._state)       
             # action = self.board.path_finding(unit_id , 220)
-            ammo = None
-            bp   = None
 
-            for i in range(225):
-                if self.board.grid[i].obj_type == 'a':
-                    ammo = i
-                    ammo = None
+            if self.board.ammo_found:
 
-                if self.board.grid[i].obj_type == 'bp':
-                    bp = i
-                    bp = None
-
-            if ammo:
-
+                ammo = self.board.sort_ammo(unit_id)
                 print("AMMO PRESENT SIR !!! " , ammo)
                 action = self.board.path_finding(unit_id , ammo)
 
-            elif bp:
-                
-                print("POWER PRESENT SIR !!! " , bp)
-                action = self.board.path_finding(unit_id , bp)
-
             else:
-                end = random.randint(0 , 225-1)
-                # end = 220
-                print("END SIR !!! " , end)
-                action = self.board.path_finding(unit_id , end)
+                action = None
+            
+            for i in self.board.p:
+                print("NEXT NODE :",i ," " ,self.board.p[i].next_node_pos)
 
+                if self.board.p[unit_id].next_node_pos == self.board.p[i].next_node_pos and i != unit_id:
+                    print("ENTERING")
+                    print("NEXT NODE :",unit_id ," " ,self.board.p[unit_id].next_node_pos)
+                   
+                    action = None
 
             if action in ["up", "left", "right", "down"]:
                 await self._client.send_move(action, unit_id)
