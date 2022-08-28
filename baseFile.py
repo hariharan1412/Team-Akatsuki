@@ -91,9 +91,9 @@ class node:
     def board_reset(self , weight):
         
         self.obj_type = '.' #Type of This node i.e ENTITY type (Refer line : 53)
-        # self.weight = 0.05
-        # self.weight = 0.001
         self.weight = weight
+        
+        self.bg = '.'
         
         self.bombs = None
         self.hp = None
@@ -244,12 +244,14 @@ class Gameboard:
             if i % 15 == 0:
                 print()
             
+            self.grid[i].bg = self.grid[i].obj_type 
+            
             for j in self.p:
 
                 if self.p[j].id == i:
-                    self.grid[i].obj_type = j
+                    self.grid[i].bg = j
          
-            print(self.grid[i].obj_type , end=' ')
+            print(self.grid[i].bg , end=' ')
 
         print()
 
