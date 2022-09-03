@@ -34,7 +34,7 @@ class player:
         self.target_ammo = []
 
         # self.goto = [7]
-        self.goto = [None , 112]
+        self.goto = [None , 112 ]
 
 
     def next_node(self , action ,  unit=None):
@@ -353,9 +353,23 @@ class Gameboard:
 
                 else:
                     self.grid[l_].weight = float("inf")
+                
+                print("UNIT IN UPDATE : " , i)
+                print(self.p[i].goto)
 
                 if self.p[i].goto[-1] == self.p[i].id:
-                    self.p[i].goto.pop()
+                    
+                    print(self.p[i].goto)
+
+                    if len(self.p[i].target_ammo) < 1:
+                        self.p[i].goto.pop()
+
+                    # for b in self.p[i].target_ammo:
+
+                    #     if b.obj_type == '.':
+                    #         # self.p[i].goto.pop()
+                    #         pass
+
                     if len(self.p[i].goto) < 1:
                         self.p[i].goto.insert(0 , None)
 
@@ -481,17 +495,17 @@ class Gameboard:
 
                 elif n.obj_type == 'w':
                     print(unit , " => BOMB")
-                    evade = self.bomb_evade(unit=unit , fake_bomb=True)
+                    # evade = self.bomb_evade(unit=unit , fake_bomb=True)
 
-                    if evade != None:
-                        self.p[unit].next_node(unit , self.actions[4])
-                        self.p[unit].goto.append(evade)
+                    # if evade != None:
+                    #     self.p[unit].next_node(unit , self.actions[4])
+                    #     self.p[unit].goto.append(evade)
 
-                        return self.actions[4] , unit
-                    else:
-                        return None, unit
+                    #     return self.actions[4] , unit
+                    # else:
+                    #     return None, unit
 
-                    # return self.actions[4] , unit
+                    return self.actions[4] , unit
 
                 
                 elif n.obj_type == 'o':
@@ -547,16 +561,19 @@ class Gameboard:
         start = self.grid[self.p[unit].id]#UNIT postion
         
 
-        if not fake_bomb:
-            self.need_to_check = [i for i in self.bombs if 2*self.h(i , self.p[unit]) -1 < i.blast_diameter] 
+        # if not fake_bomb:
+        #     self.need_to_check = [i for i in self.bombs if 2*self.h(i , self.p[unit]) -1 < i.blast_diameter] 
 
-        else:
-            self.need_to_check = [start]
+        # else:
+        #     self.need_to_check = [start]
+
+        self.need_to_check = [i for i in self.bombs if 2*self.h(i , self.p[unit]) -1 < i.blast_diameter] 
 
         safe_spot = None
         self.attack_spot = set()
 
         # bomb = bomb
+        self.p[unit].target_ammo = []
 
         for b in self.need_to_check:
             
@@ -565,6 +582,8 @@ class Gameboard:
 
             bomb = b
             
+            self.p[unit].target_ammo.append(bomb)
+
             q = deque()
             q.append(start)
 
@@ -592,7 +611,7 @@ class Gameboard:
                 
                 else:
                     safe_spot = a.id
-                    # return a.id
+                    # return None
 
         return safe_spot
         # if safe_spot:
@@ -672,8 +691,11 @@ class Gameboard:
         evade = self.bomb_evade(unit=unit_id)
        
         if evade != None:
+            
+            if evade not in self.p[unit_id].goto:
+                self.p[unit_id].goto.append(evade)
+            # self.p[unit_id].goto.append(evade)
 
-            self.p[unit_id].goto.append(evade)
             action , unit_id = self.path_finding(unit=unit_id , end_point=self.p[unit_id].goto[-1])
 
         elif self.power_up_found:
