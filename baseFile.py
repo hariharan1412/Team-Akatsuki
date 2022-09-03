@@ -34,7 +34,7 @@ class player:
         self.target_ammo = []
 
         # self.goto = [7]
-        self.goto = [None , 112 ]
+        self.goto = [None , 112]
 
 
     def next_node(self , action ,  unit=None):
@@ -56,7 +56,7 @@ class player:
             self.can_i_place_bomb_here(unit)
             self.next_node_pos = self.id
 
-        elif action == None:
+        elif action == None or action == 'detonate':
 
             self.next_node_pos = self.id
         
@@ -128,7 +128,6 @@ class node:
         self.col = col
         self.id = self.col + self.row * 15
 
-        self.neibours = []
 
         # self.evade_neibours = []
 
@@ -139,6 +138,7 @@ class node:
         self.bg = '.'
 
         self.player = None
+        self.enemy  = False
 
         self.weight = weight
 
@@ -162,19 +162,20 @@ class node:
             
             self.evade_neibours = []
 
-            if self.row > 0 and grid[self.id - 15].obj_type ==  '.': #UP
+            if self.row > 0 and grid[self.id - 15].obj_type ==  '.' and not grid[self.id - 15].enemy: #UP
                 self.evade_neibours.append(grid[self.id - 15])
 
-            if self.row < 14 and grid[self.id + 15].obj_type ==  '.': #DOWN
+            if self.row < 14 and grid[self.id + 15].obj_type ==  '.' and not grid[self.id + 15].enemy: #DOWN
                 self.evade_neibours.append(grid[self.id + 15])
 
-            if self.col > 0 and grid[self.id -1].obj_type ==  '.': #LEFT
+            if self.col > 0 and grid[self.id -1].obj_type ==  '.' and not grid[self.id - 1].enemy: #LEFT
                 self.evade_neibours.append(grid[self.id - 1])
             
-            if self.col < 14 and grid[self.id + 1].obj_type ==  '.': #RIGHT
+            if self.col < 14 and grid[self.id + 1].obj_type ==  '.' and not grid[self.id + 1].enemy: #RIGHT
                 self.evade_neibours.append(grid[self.id + 1])        
         
         else:
+            self.neibours = []
 
             if self.row > 0 and grid[self.id - 15].weight !=  float("inf"): #UP
                 self.neibours.append(grid[self.id - 15])
@@ -213,13 +214,13 @@ class Gameboard:
 
         self.weight = 0.1
 
-        self.myTeam = None
+        self.myTeam = []
         
         self.maja = lambda x : [14-x[1] , x[0]] #MAJA FUNCTION i.e is convert col , row to row , col (want to know reason call us :)
 
         self.h = lambda start , end : abs(start.row - end.row) + abs(start.col - end.col) #Herustic function
 
-        self.linear_fucn = lambda l : l[1] + l[0] * 15 
+        self.linear_fucn = lambda l : l[1] + l[0] * 15         
 
         # self.attack_spot = set()
 
@@ -320,24 +321,18 @@ class Gameboard:
         # BOTs
         # OPPONENT TEAM => c , e , g 
         # OUR TEAM      => d , f , h 
-        for i in self.total_players:
+        # for i in self.total_players:
+        for i in 'cdefgh':
             
             x_ = self.maja(self.gameState['unit_state'][i]['coordinates'])
             l_ = self.linear_fucn(x_)
             
-            self.grid[l_].player = i
-
             self.p[i].row = x_[0]
             self.p[i].col = x_[1]
 
             self.p[i].id  = l_
 
-            # action = None
-            # print(" : ", unit)
-
-            # h_ = self.p[unit].goto.pop()
-
-            # print(" POPED : ", h_)
+            # self.grid[i].player = True
 
             self.p[i].hp = self.gameState['unit_state'][i]['hp']
             self.p[i].bombs = self.gameState['unit_state'][i]['inventory']['bombs']
@@ -347,55 +342,35 @@ class Gameboard:
 
             if i in self.myTeam:
     
-
                 if self.p[i].hp > 0:
                     self.grid[l_].weight = self.weight
 
                 else:
                     self.grid[l_].weight = float("inf")
                 
-                print("UNIT IN UPDATE : " , i)
-                print(self.p[i].goto)
-
-                if self.p[i].goto[-1] == self.p[i].id:
-                    
-                    print(self.p[i].goto)
-
-                    if len(self.p[i].target_ammo) < 1:
-                        self.p[i].goto.pop()
-
-                    # for b in self.p[i].target_ammo:
-
-                    #     if b.obj_type == '.':
-                    #         # self.p[i].goto.pop()
-                    #         pass
-
-                    if len(self.p[i].goto) < 1:
-                        self.p[i].goto.insert(0 , None)
-
-                print(self.p[i].goto)
-
+                # print("UNIT IN UPDATE : " , i)
+                # print(self.p[i].goto)
 
             else:
                 self.grid[l_].weight = float("inf")
+                self.grid[l_].enemy = True
             
         self.render(game=True)
 
-
-    def active_agents(self, my_units):
+    # def active_agents(self, my_units):
         
-        self.myTeam = []
-        self.total_players = ['c','d','e','f','g','h']
+    #     self.myTeam = []
+    #     self.total_players = ['c','d','e','f','g','h']
 
-        for i in my_units:
+    #     for i in my_units:
 
-            if self.p[i].hp > 0:
-                self.myTeam.append(i)
+    #         if self.p[i].hp > 0:
+    #             self.myTeam.append(i)
             
-            else:
-                self.total_players.remove(i)
+    #         else:
+    #             self.total_players.remove(i)
                 
-        return self.myTeam
+    #     return self.myTeam
     
     def sort_ammo(self , unit):
 
@@ -494,7 +469,23 @@ class Gameboard:
                 #     return None , unit
 
                 elif n.obj_type == 'w':
-                    print(unit , " => BOMB")
+                    print(unit , " => BOMB" , "END NODE : " , self.p[unit].id)
+
+                    evade = self.bomb_evade( unit=unit , end_node=self.p[unit].id)
+
+                    print( " EVADE END NODE : " , evade)
+
+                    if evade != None:
+
+                        self.p[unit].next_node(unit , self.actions[4])
+                        return self.actions[4] , unit
+
+                    else:
+                        action = None
+
+                        self.p[unit].next_node(unit ,action)
+                        return action , unit
+
                     # evade = self.bomb_evade(unit=unit , fake_bomb=True)
 
                     # if evade != None:
@@ -505,13 +496,25 @@ class Gameboard:
                     # else:
                     #     return None, unit
 
-                    return self.actions[4] , unit
+                    # return self.actions[4] , unit
 
                 
                 elif n.obj_type == 'o':
-                    print(unit , " => BOMB")
-                    self.p[unit].next_node(unit , self.actions[4])
-                    return self.actions[4] , unit
+                    print(unit , " => BOMB" , "END NODE : " , self.p[unit].id)
+
+                    evade = self.bomb_evade(unit=unit , end_node=self.p[unit].id)
+
+                    if evade != None:
+
+                        self.p[unit].next_node(unit , self.actions[4])
+                        return self.actions[4] , unit
+
+                    else:
+                        action = None
+
+                        self.p[unit].next_node(unit ,action)
+                        return action , unit
+    
 
                 elif n.id == start.id:
                     print(unit , " => SAME SPOT")
@@ -554,36 +557,36 @@ class Gameboard:
             return None , unit
 
     # def bomb_place(self, unit):
+    # def bomb_evade(self , unit , fake_bomb=False , end_node=None):
+    def bomb_evade(self , unit=None , end_node=None):
 
-
-    def bomb_evade(self , unit , fake_bomb=False):
+        print( "END NODE : " , end_node)
 
         start = self.grid[self.p[unit].id]#UNIT postion
+
+        if end_node != None:
+            self.bombs.append(self.grid[end_node])
+            self.grid[end_node].blast_diameter = self.p[unit].blast_diameter
+            # self.grid[end_node].blast_diameter = 5
         
-
-        # if not fake_bomb:
-        #     self.need_to_check = [i for i in self.bombs if 2*self.h(i , self.p[unit]) -1 < i.blast_diameter] 
-
-        # else:
-        #     self.need_to_check = [start]
-
+        print( " BOMBS : " , self.bombs)
+        
         self.need_to_check = [i for i in self.bombs if 2*self.h(i , self.p[unit]) -1 < i.blast_diameter] 
+
+        print( " NODE CHECK : " , self.need_to_check)
 
         safe_spot = None
         self.attack_spot = set()
 
-        # bomb = bomb
-        self.p[unit].target_ammo = []
+        # self.p[unit_player].target_ammo = []
 
         for b in self.need_to_check:
             
             for j in self.attack_spot:
-                j.is_visited = False
+                self.grid[j].is_visited = False
 
             bomb = b
             
-            self.p[unit].target_ammo.append(bomb)
-
             q = deque()
             q.append(start)
 
@@ -593,32 +596,41 @@ class Gameboard:
                 
                 a = q.popleft()
 
-                if a.row == bomb.row or a.col == bomb.col: #EITHER HORIZONTAL OR VERTICAL 
+                if a.row == bomb.row or a.col == bomb.col : 
 
                     if 2*self.h(a , bomb) -1 < bomb.blast_diameter or a.id in self.attack_spot: #NOT SAFE 
                         a.add_neibour(self.grid , evade=True) #NEED TO CHECK WETHER ALL ARE INFINITY  
 
+                        self.attack_spot.add(a.id)
+                        
                         for i in a.evade_neibours:
                             if i.is_visited == False:
                                 q.append(i)
                                 i.is_visited = True
 
-                                self.attack_spot.add(i.id)
+                                print(i.id)
 
                     else:
                         safe_spot = a.id
                         # return a.id
-                
                 else:
                     safe_spot = a.id
                     # return None
+        
+        self.safe_spot = safe_spot
 
-        return safe_spot
-        # if safe_spot:
-            # self.p[unit].goto.append(safe_spot)
-            # return safe_spot
+        print(" SAFE SPOT " , safe_spot)
+        print(" ATTACK SPOT " , self.attack_spot)
+
+        if safe_spot in self.attack_spot:
             
-                
+                print("IN")
+                return None
+
+        print("OUT")
+        return safe_spot
+     
+
     # def path_finding(self , unit , end_point , check=False , once_check=False): 
     def path_finding(self , unit , end_point , check=False): 
         
@@ -656,9 +668,15 @@ class Gameboard:
 
             if current == end:
 
-                # action , unit_player = self.take_action(came_from=path, current=current , start=start ,end=end ,unit=unit , once_check=once_check)
                 action , unit_player = self.take_action(came_from=path, current=current , start=start ,end=end ,unit=unit)
-                # print(" REACHED " , action , unit_player)
+
+                # if self.p[unit].id == self.safe_spot:
+
+                    # if self.p[unit].next_node_pos in self.attack_spot:
+                    
+                    # action = None 
+                    # return action , unit 
+
                 return action , unit_player
 
             open_set_hash.remove(current)
@@ -685,24 +703,35 @@ class Gameboard:
         return None , unit
 
     def AI(self , unit_id):
+        # self.actions = ["up", "down", "left", "right", "bomb", "detonate"]
+
           
-        unit_id = 'f'
+        # unit_id = 'h'
+        # unit_id = 'f'
+        # unit_id = 'h'
 
         evade = self.bomb_evade(unit=unit_id)
-       
+
         if evade != None:
             
             if evade not in self.p[unit_id].goto:
                 self.p[unit_id].goto.append(evade)
             # self.p[unit_id].goto.append(evade)
-
+            print(" SAFE SPOT " , self.safe_spot , " TICK NUMBER " , self.tick_number)
             action , unit_id = self.path_finding(unit=unit_id , end_point=self.p[unit_id].goto[-1])
 
         elif self.power_up_found:
             action , unit_id = self.catch_spans(unit_id=unit_id)
         
         else:        
-            action , unit_id = self.path_finding(unit=unit_id , end_point=self.p[unit_id].goto[-1])
+            if len(self.p[unit_id].goto) > 2:
+                action = self.actions[5]
+                self.p[unit_id].goto.pop()
+                self.p[unit_id].next_node(self.actions[5])
+
+
+            else:
+                action , unit_id = self.path_finding(unit=unit_id , end_point=self.p[unit_id].goto[-1])
 
         
         for i in self.myTeam:
