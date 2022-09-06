@@ -1,5 +1,4 @@
 #OUR IMPORTS    
-from enum import Flag
 from queue import PriorityQueue
 from operator import itemgetter
 import numpy as np
@@ -35,6 +34,8 @@ class player:
 
         # self.goto = [7]
         self.goto = [None , 112]
+        # self.goto = 112
+        # self.goto = 51
 
 
     def next_node(self , action ,  unit=None):
@@ -90,12 +91,15 @@ class player:
             # to_ = random.choice(neibour)
 
             print("UNIT NAME : " , self.unit_id)
-            return self.gameBoard.path_finding(unit=self.unit_id , end_point=to_.id , check=True)
+            self.goto.append(to_.id)
+            return self.gameBoard.path_finding(unit=self.unit_id , end_point=self.goto[-1] , check=True)
 
         else:
+            # action , unit = self.p[n.player].move_on(start , to_node=None , told_by=n.player , single_Step=True)
 
             self.grid[self.id].add_neibour(self.grid)
             neibour = self.grid[self.id].neibours
+            
             neibour.remove(start)
 
             least_Weight = float("inf")
@@ -108,7 +112,9 @@ class player:
             # to_ = random.choice(neibour)
 
             print("UNIT NAME : " , self.unit_id)
-            return self.gameBoard.path_finding(unit=self.unit_id , end_point=to_.id , check=True)
+
+            self.goto.append(to_.id)
+            return self.gameBoard.path_finding(unit=self.unit_id , end_point=self.goto[-1] , check=True)
 
 
     #HELP TEAM MATES TO OPEN A PATH OR SOMETHING
@@ -162,19 +168,20 @@ class node:
             
             self.evade_neibours = []
 
-            if self.row > 0 and grid[self.id - 15].obj_type ==  '.' and not grid[self.id - 15].enemy: #UP
+            if self.row > 0 and grid[self.id - 15].obj_type ==  '.' and not grid[self.id - 15].enemy and not grid[self.id - 15].player: #UP
                 self.evade_neibours.append(grid[self.id - 15])
 
-            if self.row < 14 and grid[self.id + 15].obj_type ==  '.' and not grid[self.id + 15].enemy: #DOWN
+            if self.row < 14 and grid[self.id + 15].obj_type ==  '.' and not grid[self.id + 15].enemy  and not grid[self.id + 15].enemy: #DOWN
                 self.evade_neibours.append(grid[self.id + 15])
 
-            if self.col > 0 and grid[self.id -1].obj_type ==  '.' and not grid[self.id - 1].enemy: #LEFT
+            if self.col > 0 and grid[self.id -1].obj_type ==  '.' and not grid[self.id - 1].enemy and not grid[self.id - 1].enemy: #LEFT
                 self.evade_neibours.append(grid[self.id - 1])
             
-            if self.col < 14 and grid[self.id + 1].obj_type ==  '.' and not grid[self.id + 1].enemy: #RIGHT
+            if self.col < 14 and grid[self.id + 1].obj_type ==  '.' and not grid[self.id + 1].enemy and not grid[self.id + 1].enemy: #RIGHT
                 self.evade_neibours.append(grid[self.id + 1])        
         
         else:
+
             self.neibours = []
 
             if self.row > 0 and grid[self.id - 15].weight !=  float("inf"): #UP
@@ -220,13 +227,15 @@ class Gameboard:
 
         self.h = lambda start , end : abs(start.row - end.row) + abs(start.col - end.col) #Herustic function
 
-        self.linear_fucn = lambda l : l[1] + l[0] * 15         
+        self.linear_fucn = lambda l : l[1] + l[0] * 15     
+
+        self.inf_space = []    
 
         # self.attack_spot = set()
 
         # self.bomb_is_here = lambda x : True if self.grid[self.p[x].id].obj_type == 'b' else False
 
-    def render(self, game=False):
+    def render(self, game=False , inf=False , path_trace=False , path=None):
 
         print()
 
@@ -236,8 +245,24 @@ class Gameboard:
 
             if game:
                 self.grid[i].bg = self.grid[i].obj_type 
-            else:
-                self.grid[i].bg = self.grid[i].g_score 
+            
+            if inf:
+                if self.grid[i].weight == float("inf"):
+                
+                    self.grid[i].bg = '*'
+                else:
+                    self.grid[i].bg = '.'
+
+            if path_trace:
+                
+                # print(path)
+
+                if self.grid[i] in path:
+                    self.grid[i].bg = '*'
+
+                else:
+                    self.grid[i].bg = '.'
+
 
             for j in self.p:
 
@@ -247,6 +272,12 @@ class Gameboard:
             print(self.grid[i].bg , end=' ')
         
         print()
+    
+    def nodes_reset(self):
+
+        for i in range(225):
+            self.grid[i].board_reset(self.weight)
+
 
     def update_board(self , gameState , tick_number=None): #Everytime the board get updated with current values 
 
@@ -262,8 +293,7 @@ class Gameboard:
         
         self.bombs = []
 
-        for i in range(225):
-            self.grid[i].board_reset(self.weight)
+        self.nodes_reset()
 
         #ENTITIES i.e WOOD , STONE , METAL , BOMB , AMMO , FIRE , POWERUP => w , o , m , b , a , x , bp
         for i in self.gameState['entities']:
@@ -332,7 +362,7 @@ class Gameboard:
 
             self.p[i].id  = l_
 
-            # self.grid[i].player = True
+            self.grid[l_].player = i
 
             self.p[i].hp = self.gameState['unit_state'][i]['hp']
             self.p[i].bombs = self.gameState['unit_state'][i]['inventory']['bombs']
@@ -343,7 +373,8 @@ class Gameboard:
             if i in self.myTeam:
     
                 if self.p[i].hp > 0:
-                    self.grid[l_].weight = self.weight
+                    # self.grid[l_].weight = self.weight
+                    self.grid[l_].weight = float("inf")
 
                 else:
                     self.grid[l_].weight = float("inf")
@@ -355,7 +386,11 @@ class Gameboard:
                 self.grid[l_].weight = float("inf")
                 self.grid[l_].enemy = True
             
-        self.render(game=True)
+
+        for i in self.inf_space:
+            i.weight = float("inf")
+
+        # self.render(game=True)
 
     # def active_agents(self, my_units):
         
@@ -414,10 +449,15 @@ class Gameboard:
         path.insert(0 , end)
         n = path[len(path)-1]
         # print("UNIT LETS SEE : " , unit , " PATH LEN : " , len(path))
-        
-        try:
-            print(" TOTAL WEIGHT ", tot_cost , len(path))
+        # for i in path:
+            # print(i.id)
+        # self.render(inf=True)
+        # self.render(path_trace=True , path=path)
 
+
+        try:
+        #     print(" TOTAL WEIGHT ", tot_cost , len(path))
+        # if True:
             if len(path) > 0:
 
                 print("UNIT ", unit , start.id)
@@ -453,22 +493,25 @@ class Gameboard:
                     action = None
                     return action , unit
 
-                # elif n.player in self.myTeam:
+                elif n.player in self.myTeam:
 
-                #     if len(path) > 1:
-                #         # print(" CALLED BY " , unit)
-                #         n2 = path[len(path)-2]
-                #         action , unit = self.p[n.player].move_on(start , to_node=n2)
-                #         return action , unit
+                    if len(path) > 1:
+                        # print(" CALLED BY " , unit)
+                        n2 = path[len(path)-2]
+                        # n2 = path[-2]
+                        action , unit = self.p[n.player].move_on(start , to_node=n2)
+                        return action , unit
 
-                #     else:
-                #         action , unit = self.p[n.player].move_on(start , to_node=None , told_by=n.player , single_Step=True)
-                #         self.this_player = 'd'
-                #         return action , unit
+                    else:
+
+                        action , unit = self.p[n.player].move_on(start , to_node=None , told_by=n.player , single_Step=True)
+                        return action , unit
+
                 # elif n.id in self.attack_spot:
                 #     return None , unit
 
                 elif n.obj_type == 'w':
+
                     print(unit , " => BOMB" , "END NODE : " , self.p[unit].id)
 
                     evade = self.bomb_evade( unit=unit , end_node=self.p[unit].id)
@@ -477,26 +520,26 @@ class Gameboard:
 
                     if evade != None:
 
+                        if len(self.inf_space) > 0:
+                            self.inf_space = []
+
                         self.p[unit].next_node(unit , self.actions[4])
                         return self.actions[4] , unit
 
                     else:
-                        action = None
+                        
+                        # n.weight = float("inf")
+                        self.inf_space.append(n)
+                        
+                        action , unit = self.path_finding(unit=unit , end_point=self.p[unit].goto[-1] , check=True)
+                        
+                        # action = None
 
                         self.p[unit].next_node(unit ,action)
+                        # self.render(inf=True)
+
+                        # self.render(path_trace=True , path=path)
                         return action , unit
-
-                    # evade = self.bomb_evade(unit=unit , fake_bomb=True)
-
-                    # if evade != None:
-                    #     self.p[unit].next_node(unit , self.actions[4])
-                    #     self.p[unit].goto.append(evade)
-
-                    #     return self.actions[4] , unit
-                    # else:
-                    #     return None, unit
-
-                    # return self.actions[4] , unit
 
                 
                 elif n.obj_type == 'o':
@@ -506,13 +549,26 @@ class Gameboard:
 
                     if evade != None:
 
+                        if len(self.inf_space) > 0:
+                            self.inf_space = []
+
                         self.p[unit].next_node(unit , self.actions[4])
                         return self.actions[4] , unit
 
                     else:
-                        action = None
+
+                        # action = None
+                        
+                        # n.weight = float("inf")
+                        self.inf_space.append(n)
+
+                        action , unit = self.path_finding(unit=unit , end_point=self.p[unit].goto[-1] , check=True)
 
                         self.p[unit].next_node(unit ,action)
+                        
+                        # self.render(inf=True)
+                        # self.render(path_trace=True , path=path)
+
                         return action , unit
     
 
@@ -560,20 +616,18 @@ class Gameboard:
     # def bomb_evade(self , unit , fake_bomb=False , end_node=None):
     def bomb_evade(self , unit=None , end_node=None):
 
-        print( "END NODE : " , end_node)
+        # print( "END NODE : " , end_node)
 
         start = self.grid[self.p[unit].id]#UNIT postion
 
         if end_node != None:
+
             self.bombs.append(self.grid[end_node])
             self.grid[end_node].blast_diameter = self.p[unit].blast_diameter
             # self.grid[end_node].blast_diameter = 5
         
-        print( " BOMBS : " , self.bombs)
-        
-        self.need_to_check = [i for i in self.bombs if 2*self.h(i , self.p[unit]) -1 < i.blast_diameter] 
 
-        print( " NODE CHECK : " , self.need_to_check)
+        self.need_to_check = [i for i in self.bombs if 2*self.h(i , self.p[unit]) -1 < i.blast_diameter] 
 
         safe_spot = None
         self.attack_spot = set()
@@ -593,7 +647,8 @@ class Gameboard:
             start.is_visited = True
 
             while q:
-                
+
+
                 a = q.popleft()
 
                 if a.row == bomb.row or a.col == bomb.col : 
@@ -623,21 +678,20 @@ class Gameboard:
         print(" ATTACK SPOT " , self.attack_spot)
 
         if safe_spot in self.attack_spot:
-            
-                print("IN")
                 return None
 
-        print("OUT")
         return safe_spot
      
 
     # def path_finding(self , unit , end_point , check=False , once_check=False): 
     def path_finding(self , unit , end_point , check=False): 
         
-        print("UNIT " , unit , end_point)
-        # if check:
-        #     self.update_board(self.gameState)
-                
+        if check:
+            self.update_board(self.gameState)
+            for i in self.inf_space:
+                i.weight = float("inf")
+
+
         start = self.grid[self.p[unit].id]#UNIT postion
 
         if end_point == None:
@@ -649,7 +703,11 @@ class Gameboard:
             end_point = self.linear_fucn(end_point)
 
         end = self.grid[end_point]
+
+        if start == end:
+            pass
             
+
         path = {}
 
         count = 0
@@ -706,7 +764,7 @@ class Gameboard:
         # self.actions = ["up", "down", "left", "right", "bomb", "detonate"]
 
           
-        # unit_id = 'h'
+        # unit_id = 'd'
         # unit_id = 'f'
         # unit_id = 'h'
 
@@ -717,7 +775,7 @@ class Gameboard:
             if evade not in self.p[unit_id].goto:
                 self.p[unit_id].goto.append(evade)
             # self.p[unit_id].goto.append(evade)
-            print(" SAFE SPOT " , self.safe_spot , " TICK NUMBER " , self.tick_number)
+            # print(" SAFE SPOT " , self.safe_spot , " TICK NUMBER " , self.tick_number)
             action , unit_id = self.path_finding(unit=unit_id , end_point=self.p[unit_id].goto[-1])
 
         elif self.power_up_found:
@@ -739,6 +797,7 @@ class Gameboard:
                 self.p[unit_id].next_node(None)
 
                 action = None
+
 
         print("ACTION : " , action , "UNIT : " , unit_id)
 
