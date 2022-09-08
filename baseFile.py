@@ -1,4 +1,5 @@
 #OUR IMPORTS    
+from pickle import NONE
 from queue import PriorityQueue
 from operator import itemgetter
 import numpy as np
@@ -67,9 +68,9 @@ class player:
         if not single_Step:
 
             print(" FUCNTION CALLED " , self.unit_id)
-            self.grid[self.id].add_neibour(self.grid)
+            neibour = self.grid[self.id].add_neibour(self.grid)
             
-            neibour = self.grid[self.id].neibours
+            # neibour = self.grid[self.id].neibours
 
             neibour.remove(start)
             neibour.remove(to_node)
@@ -90,8 +91,8 @@ class player:
         else:
             # action , unit = self.p[n.player].move_on(start , to_node=None , told_by=n.player , single_Step=True)
 
-            self.grid[self.id].add_neibour(self.grid)
-            neibour = self.grid[self.id].neibours
+            neibour = self.grid[self.id].add_neibour(self.grid)
+            # neibour = self.grid[self.id].neibours
             
             neibour.remove(start)
 
@@ -128,8 +129,6 @@ class node:
         self.id = self.col + self.row * 15
 
 
-        # self.evade_neibours = []
-
     def board_reset(self , weight):
         
         self.obj_type = '.' #Type of This node i.e ENTITY type (Refer line : 53)
@@ -148,102 +147,83 @@ class node:
         self.expires = None
         self.blast_diameter = None
         self.invulnerability = 0
-    
-        self.gonna_fire = False
+        self.bomb_x_and_y = None
 
         self.h_score = 0
         self.g_score = float("inf")
         self.f_score = float("inf")
 
-    def directed_neibour(self , unit=None , direction=None , diameter=None , grid=None):
-        
-        u_id = d_id = l_id = r_id = self.id
-
-        up = down = left = right = diameter 
-
-        while self.row > 0 and grid[u_id - 15].obj_type ==  '.' and grid[u_id - 15].player == None and up: #UP
-            self.evade_neibours.append(grid[u_id - 15])
-            up_id -= 1
-
-        while self.row < 14 and grid[d_id + 15].obj_type ==  '.' and grid[d_id + 15].player == None and down: #DOWN
-            self.evade_neibours.append(grid[d_id + 15])
-            down -= 1
-
-        while self.col > 0 and grid[l_id -1].obj_type ==  '.'  and grid[l_id - 1].player  == None and left: #LEFT
-            self.evade_neibours.append(grid[l_id - 1])
-            left -= 1
-        
-        while self.col < 14 and grid[r_id + 1].obj_type ==  '.' and grid[r_id + 1].player  == None and right: #RIGHT
-            self.evade_neibours.append(grid[r_id + 1])        
-            right -= 1
-    
-
-
-    # def bomb_detonate(self , unit): #IF MY UNIT AREN'T THERE DETONATE 
-            
-    #         this_bomb = self.bomb_loc[unit] #LIST OF THAT UNIT 
-
-    #         for i in this_bomb:
-    #             # neibour = i.add_neibour(self.grid , evade=True)
-
-    #             self.i.directed_neibour(self , unit=unit ,  diameter=i.blast_diameter  , grid=self.grid)
-
-                # for j in neibour:
-
-                #     if j.id == i.id - 15: #UP
-                #         self.directed_neibour(self , direction="UP" , next_cell=None , diameter=i.blast_diameter)
-
-                #         pass
-                    
-                #     elif j.id == i.id + 15: #DOWN
-                #         pass
-                    
-                #     elif j.id == i.id + 1: #RIGHT
-                #         pass
-                    
-                #     elif j.id == i.id - 1: #LEFT
-                #         pass
-                    
-            # self.bomb_loc[i["unit_id"]].append(self.grid[l_])
-            
-    def add_neibour(self , grid , evade=False ):
+    def add_neibour(self , grid , evade=False , directed=False , diameter=None ):
 
         if evade:
             
-            self.evade_neibours = []
+            evade_neibours = []
             
             #NEED TO CHANGE MULTI BOOLEAN VALUE NOT AND NOT
 
             if self.row > 0 and grid[self.id - 15].obj_type ==  '.' and  grid[self.id - 15].player == None: #UP
-                self.evade_neibours.append(grid[self.id - 15])
+                evade_neibours.append(grid[self.id - 15])
 
             if self.row < 14 and grid[self.id + 15].obj_type ==  '.' and  grid[self.id + 15].player == None: #DOWN
-                self.evade_neibours.append(grid[self.id + 15])
+                evade_neibours.append(grid[self.id + 15])
 
             if self.col > 0 and grid[self.id -1].obj_type ==  '.'  and  grid[self.id - 1].player == None: #LEFT
-                self.evade_neibours.append(grid[self.id - 1])
+                evade_neibours.append(grid[self.id - 1])
             
             if self.col < 14 and grid[self.id + 1].obj_type ==  '.' and  grid[self.id + 1].player == None: #RIGHT
-                self.evade_neibours.append(grid[self.id + 1])        
+                evade_neibours.append(grid[self.id + 1])        
         
+            return evade_neibours
+
+        elif directed:
+                
+            u_id = d_id = l_id = r_id = self.id
+
+            radius = (diameter - 1) / 2
+
+            up = down = left = right = radius 
+
+            arun_list = [self]
+
+            while self.row > 0 and grid[u_id - 15].obj_type ==  '.' and grid[u_id - 15].player == None and up: #UP
+                arun_list.append(grid[u_id - 15])
+                up -= 1
+                u_id -= 15
+
+            while self.row < 14 and grid[d_id + 15].obj_type ==  '.' and grid[d_id + 15].player == None and down: #DOWN
+                arun_list.append(grid[d_id + 15])
+                down -= 1
+                d_id += 15
+
+            while self.col > 0 and grid[l_id -1].obj_type ==  '.'  and grid[l_id - 1].player  == None and left: #LEFT
+                arun_list.append(grid[l_id - 1])
+                left -= 1
+                l_id -= 1
+            
+            while self.col < 14 and grid[r_id + 1].obj_type ==  '.' and grid[r_id + 1].player  == None and right: #RIGHT
+                arun_list.append(grid[r_id + 1])        
+                right -= 1
+                r_id += 1 
+
+            return arun_list 
 
         else:
 
-            self.neibours = []
-
+            neibours = []
             
             if self.row > 0 and grid[self.id - 15].weight !=  float("inf"): #UP
-                self.neibours.append(grid[self.id - 15])
+                neibours.append(grid[self.id - 15])
 
             if self.row < 14 and grid[self.id + 15].weight !=  float("inf"): #DOWN
-                self.neibours.append(grid[self.id + 15])
+                neibours.append(grid[self.id + 15])
 
             if self.col > 0 and grid[self.id -1].weight !=  float("inf"): #LEFT
-                self.neibours.append(grid[self.id - 1])
+                neibours.append(grid[self.id - 1])
             
             if self.col < 14 and grid[self.id + 1].weight !=  float("inf"): #RIGHT
-                self.neibours.append(grid[self.id + 1])        
+                neibours.append(grid[self.id + 1])        
 
+            return neibours
 
 class Gameboard:
 
@@ -272,6 +252,8 @@ class Gameboard:
         self.myTeam = []
         
         self.maja = lambda x : [14-x[1] , x[0]] #MAJA FUNCTION i.e is convert col , row to row , col (want to know reason call us :)
+
+        self.arun = lambda x : (x[1] , 14-x[0]) #RETUNS COL , ROW VALUE OR INVERSE MAJA FUNCTION #USE FOR BOMB DETONATION
 
         self.h = lambda start , end : abs(start.row - end.row) + abs(start.col - end.col) #Herustic function
 
@@ -346,7 +328,7 @@ class Gameboard:
         self.power_up_found = False
 
         self.gameState = gameState 
-        print(self.gameState)
+        # print(self.gameState)
         
         self.bombs = []
 
@@ -454,7 +436,7 @@ class Gameboard:
 
 
 
-        # self.render(game=True)
+            self.render(game=True)
 
     # def active_agents(self, my_units):
         
@@ -517,12 +499,12 @@ class Gameboard:
         # for i in path:
             # print(i.id)
         # self.render(inf=True)
-        # self.render(path_trace=True , path=path)
+        self.render(path_trace=True , path=path)
 
 
-        try:
+        # try:
         #     print(" TOTAL WEIGHT ", tot_cost , len(path))
-        # if True:
+        if True:
             if len(path) > 0:
 
                 print("UNIT ", unit , start.id)
@@ -637,7 +619,6 @@ class Gameboard:
 
                         return action , unit
     
-
                 elif n.id == start.id:
                     print(unit , " => SAME SPOT")
                     self.p[unit].next_node(None)
@@ -673,50 +654,48 @@ class Gameboard:
 
                 return None , unit
 
-        except Exception as e:
+        # except Exception as e:
 
-            print("ERROR IS : " , e)
-            return None , unit
+        #     print("ERROR IS : " , e)
+        #     return None , unit
 
     # def bomb_place(self, unit):
     # def bomb_evade(self , unit , fake_bomb=False , end_node=None):
-    def evalation_criteria(self) -> bool:
-        pass 
+    def evalution(self , unit , bomb_blast) -> bool:
+        
+        for i in bomb_blast:
+            # if i.player in self.myTeam and i.player != unit:
+            if i.player in self.myTeam:
+                return False
+
+        return True
+
 
     def bomb_detonate(self , unit): #IF MY UNIT AREN'T THERE DETONATE 
-        pass
-        # this_bomb = self.bomb_loc[unit] #LIST OF THAT UNIT 
-
-        # for i in this_bomb:
-        #     # neibour = i.add_neibour(self.grid , evade=True)
-
-        #     self.i.directed_neibour(self , direction="UP" , diameter=i.blast_diameter)
-
-            # for j in neibour:
-
-            #     if j.id == i.id - 15: #UP
-            #         self.directed_neibour(self , direction="UP" , next_cell=None , diameter=i.blast_diameter)
-
-            #         pass
-                
-            #     elif j.id == i.id + 15: #DOWN
-            #         pass
-                
-            #     elif j.id == i.id + 1: #RIGHT
-            #         pass
-                
-            #     elif j.id == i.id - 1: #LEFT
-            #         pass
-                
-        # self.bomb_loc[i["unit_id"]].append(self.grid[l_])
         
+        this_bomb = self.bomb_loc[unit] #LIST OF THAT UNIT 
 
-        # a.add_neibour(self.grid , evade=True) #NEED TO CHECK WETHER ALL ARE INFINITY  
+        for bomb in this_bomb:
 
-    
-                                       
+            bomb_blast = bomb.add_neibour(self.grid , directed=True , diameter=bomb.blast_diameter) #RETURN LIST 
 
-    def bomb_evade(self , unit=None , end_node=None , teamCheck=False) -> int:
+            blast = self.evalution(unit , bomb_blast) #RETURN BOOL 
+            
+            if blast:
+                
+                self.bomb_x_and_y = self.arun([bomb.row , bomb.col])
+
+                if len(self.p[unit].goto) > 1: 
+                    self.p[unit].goto.pop()
+
+                self.p[unit].next_node(self.actions[5])
+
+                return self.actions[5] , unit
+
+        return None , unit
+                                           
+
+    def bomb_evade(self , unit=None , end_node=None , teamCheck=False) -> int: #IF RADIUS IS EQUAL TO 2 
 
         # print( "END NODE : " , end_node)
         # self.myTeam # MY TEAM MATES # D F H  
@@ -758,11 +737,11 @@ class Gameboard:
                 if a.row == bomb.row or a.col == bomb.col : 
 
                     if 2*self.h(a , bomb) -1 < bomb.blast_diameter or a.id in self.attack_spot: #NOT SAFE 
-                        a.add_neibour(self.grid , evade=True) #NEED TO CHECK WETHER ALL ARE INFINITY  
+                        neibours = a.add_neibour(self.grid , evade=True) #NEED TO CHECK WETHER ALL ARE INFINITY  
 
                         self.attack_spot.add(a.id)
                         
-                        for i in a.evade_neibours: 
+                        for i in neibours: 
                             if i.is_visited == False:
                                 q.append(i)
                                 i.is_visited = True
@@ -809,8 +788,8 @@ class Gameboard:
 
         if end.weight == float("inf"): # NEED TO ADD DIAGNOL NEIBOUR # USE WHILE
 
-            end.add_neibour(self.grid)
-            neibour = end.neibours
+            neibour = end.add_neibour(self.grid)
+            #  = end.neibours
             h = 1000
 
             for i in neibour:
@@ -820,6 +799,8 @@ class Gameboard:
                     end_node = i
 
             end = end_node
+            self.p[unit].goto.pop()
+            self.p[unit].goto.append(end.id)
 
         print("END NODE " , end.id)
         # if start == end:
@@ -848,10 +829,9 @@ class Gameboard:
                 return action , unit_player
 
             open_set_hash.remove(current)
-
-            current.add_neibour(self.grid) 
-
-            for neibour in current.neibours:
+            neibours = current.add_neibour(self.grid)
+            
+            for neibour in neibours:
                 
                 temp_g_score = current.g_score + neibour.weight
                 
@@ -887,16 +867,23 @@ class Gameboard:
             # print(" SAFE SPOT " , self.safe_spot , " TICK NUMBER " , self.tick_number)
             action , unit_id = self.path_finding(unit=unit_id , end_point=self.p[unit_id].goto[-1])
 
-        elif self.power_up_found:
-            action , unit_id = self.catch_spans(unit_id=unit_id)
+        # elif self.power_up_found:
+        #     action , unit_id = self.catch_spans(unit_id=unit_id)
         
         else:        
-            if len(self.p[unit_id].goto) > 2:
-                action = self.actions[5]
-                self.p[unit_id].goto.pop()
-                self.p[unit_id].next_node(self.actions[5])
-                print("DETONATED ", self.tick_number)
 
+            # if len(self.p[unit_id].goto) > 2:
+            #     action , unit = self.bomb_detonate(self , unit) #IF MY UNIT AREN'T THERE DETONATE 
+            
+            #     # action = self.actions[5]
+            #     # self.p[unit_id].goto.pop()
+            #     # self.p[unit_id].next_node(self.actions[5])
+            #     print("DETONATED ", self.tick_number)
+
+            action , unit_id = self.bomb_detonate( unit_id) #IF MY UNIT AREN'T THERE DETONATE 
+
+            if action != None:
+                pass
 
             else:
                 action , unit_id = self.path_finding(unit=unit_id , end_point=self.p[unit_id].goto[-1])
