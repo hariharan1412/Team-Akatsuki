@@ -6,6 +6,8 @@ import os
 import time
 
 from game import Gameboard
+# from aka1 import Gameboard
+
 
 uri = os.environ.get(
     'GAME_CONNECTION_STRING') or "ws://127.0.0.1:3000/?role=agent&agentId=agentId&name=defaultName"
@@ -46,7 +48,6 @@ class Agent():
             return None
 
     async def _on_game_tick(self, tick_number, game_state):
-
         # get my units
         my_agent_id = game_state.get("connection").get("agent_id")
         my_units = game_state.get("agents").get(my_agent_id).get("unit_ids")
@@ -54,25 +55,91 @@ class Agent():
         # myTeam = self.board.active_agents(my_units)
         
         # send each unit a random action
+        # my_units = self.board.active_agents(my_units)
+
         self.board.myTeam = my_units
         
         for unit_id in my_units:
             
             self.board.update_board(self._client._state , tick_number)       
             
+            # try:
+
+            #     action , unit_id = self.board.AI(unit_id=unit_id)
+
+            # except Exception as e:
+            #     action = None
+            #     print(" [ ERROR ] " , e)
+
             action , unit_id = self.board.AI(unit_id=unit_id)
+
 
             if action in ["up", "left", "right", "down"]:
                 await self._client.send_move(action, unit_id)
+            
             elif action == "bomb":
                 await self._client.send_bomb(unit_id)
+
             elif action == "detonate":
-                bomb_coordinates = self._get_bomb_to_detonate(unit_id)
-                if bomb_coordinates != None:
-                    x, y = bomb_coordinates
-                    await self._client.send_detonate(x, y, unit_id)
+                
+                # bomb_coordinates = self._get_bomb_to_detonate(unit_id)
+
+                # if bomb_coordinates != None:
+
+                    # x, y = bomb_coordinates
+                    # await self._client.send_detonate(x, y, unit_id)
+                x , y = self.board.bomb_x_and_y[0] , self.board.bomb_x_and_y[1]
+                await self._client.send_detonate(x, y, unit_id)
+            
             else:
                 print(f"Unhandled action: {action} for unit {unit_id}")
+
+
+    # async def _on_game_tick(self, tick_number, game_state):
+    #     # get my units
+    #     my_agent_id = game_state.get("connection").get("agent_id")
+    #     my_units = game_state.get("agents").get(my_agent_id).get("unit_ids")
+
+    #     # myTeam = self.board.active_agents(my_units)
+        
+    #     # send each unit a random action
+    #     my_units = self.board.active_agents(my_units)
+
+    #     # self.board.myTeam = my_units
+        
+    #     for unit_id in my_units:
+            
+    #         self.board.update_board(self._client._state , tick_number)       
+            
+    #         try:
+
+    #             action , unit_id = self.board.AI(unit_id=unit_id)
+
+    #         except Exception as e:
+    #             action = None
+    #             print(" [ ERROR ] " , e)
+
+
+
+    #         if action in ["up", "left", "right", "down"]:
+    #             await self._client.send_move(action, unit_id)
+            
+    #         elif action == "bomb":
+    #             await self._client.send_bomb(unit_id)
+
+    #         elif action == "detonate":
+                
+    #             bomb_coordinates = self._get_bomb_to_detonate(unit_id)
+
+    #             if bomb_coordinates != None:
+
+    #                 x, y = bomb_coordinates
+    #                 await self._client.send_detonate(x, y, unit_id)
+    #             # x , y = self.board.bomb_x_and_y[0] , self.board.bomb_x_and_y[1]
+    #             # await self._client.send_detonate(x, y, unit_id)
+            
+    #         else:
+    #             print(f"Unhandled action: {action} for unit {unit_id}")
 
 
 def main():
