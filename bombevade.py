@@ -1,7 +1,6 @@
 #OUR IMPORTS    
 from queue import PriorityQueue
 from operator import itemgetter
-from shutil import move
 import numpy as np
 import random
 from collections import deque
@@ -322,7 +321,7 @@ class node:
 
     # def add_neibour(self , grid , evade=False  ):
 
-    def add_neibour(self, grid, evade=False, atk=False , directed=False , diameter=None , move=False , f_unit=None):
+    def add_neibour(self, grid, evade=False, atk=False , directed=False , diameter=None , move=False , f_unit=None , fire=False):
 
         # neibour = self.grid[eId].add_neibour(self.grid, evade=True, atk=True)
 
@@ -343,6 +342,25 @@ class node:
                 eNeigh.append(grid[self.id + 1])
 
             return eNeigh
+
+        elif fire:
+
+            evade_neibours = []
+
+            if self.row > 0 and (grid[self.id - 15].obj_type ==  '.' or  grid[self.id - 15].obj_type ==  'x'): #UP
+                evade_neibours.append(grid[self.id - 15])
+
+            if self.row < 14 and (grid[self.id + 15].obj_type ==  '.' or  grid[self.id + 15].obj_type ==  'x'): #DOWN
+                evade_neibours.append(grid[self.id + 15])
+
+            if self.col > 0 and (grid[self.id -1].obj_type ==  '.'  or grid[self.id - 1].obj_type ==  'x'): #LEFT
+                evade_neibours.append(grid[self.id - 1])
+            
+            if self.col < 14 and (grid[self.id + 1].obj_type ==  '.' or  grid[self.id + 1].obj_type ==  'x'):#RIGHT
+                evade_neibours.append(grid[self.id + 1])        
+        
+            return evade_neibours
+
 
         elif move:
             
@@ -653,7 +671,8 @@ class Gameboard:
 
             elif i['type'] == 'x':
                 
-                self.grid[l_].weight = 90
+                # self.grid[l_].weight = 300
+                self.grid[l_].weight = float("inf")
 
                 self.fire.append(self.grid[l_])
 
@@ -683,7 +702,8 @@ class Gameboard:
             if i in self.myTeam:
                 
                 if self.p[i].hp > 0:
-                    self.grid[l_].weight = self.weight  
+                    # self.grid[l_].weight = self.weight  + 0.5
+                    self.grid[l_].weight = self.weight 
                     # self.grid[l_].weight = float("inf")
 
                 else:
@@ -695,6 +715,7 @@ class Gameboard:
                     for k in self.fire:
 
                         k.weight = self.weight
+                        # k.weight = 0
                         # k.obj_type = '.'
                 
             else:
@@ -769,6 +790,54 @@ class Gameboard:
         return action , unit_id
 
     
+    def on_fire(self , unit):
+        
+        start = self.grid[self.p[unit].id]
+
+
+        if start.obj_type == 'x':
+            
+            visited = []
+
+            q = deque()
+            q.append(start)
+
+            start.is_visited = True
+
+            while q:
+
+                a = q.popleft()
+
+                if a.obj_type == 'x': 
+
+                    neibours = a.add_neibour(self.grid , fire=True) #GET ALL EMPTY NODE  
+
+                    for i in neibours: 
+                        
+                        if i.is_visited == False:
+                            
+                            q.append(i)
+                                
+                            i.is_visited = True
+                            visited.append(i)
+
+                else:
+                    break
+
+
+            start.is_visited = False
+            for i in visited:
+                i.is_visited = False
+
+            return a.id
+        
+        return None
+
+        # action , unit = self.gameBoard.path_finding(unit=self.unit_id , end_point=a.id , check=True)
+
+        # return action , unit
+
+
     def evalution(self , unit , bomb_blast) -> bool:
         
         for i in bomb_blast:
@@ -976,19 +1045,21 @@ class Gameboard:
                         
                     
                 # self.actions = ["up", "down", "left", "right", "bomb", "detonate"]
-                if n.obj_type == 'x':
-                    # print(unit , " => BOMB NEXT MOVE ")
-                    # # self.p[unit].next_node(unit , self.actions[4])
-                    # id_ = self.bomb_evade(unit=unit , bomb=n)
-                    # self.p[unit].goto.append(id_)
-                    # # return self.actions[3] , unit
-                    # print(" ID " , id_)
+                # if n.obj_type == 'x':
 
-                    # action , unit = self.path_finding(unit=unit , end_point=self.p[unit].goto[-1] , check=True)
-                    action = None
-                    return action , unit
+                #     # print(unit , " => BOMB NEXT MOVE ")
+                #     # # self.p[unit].next_node(unit , self.actions[4])
+                #     # id_ = self.bomb_evade(unit=unit , bomb=n)
+                #     # self.p[unit].goto.append(id_)
+                #     # # return self.actions[3] , unit
+                #     # print(" ID " , id_)
 
-                elif n.player in self.eTeam:
+                #     # action , unit = self.path_finding(unit=unit , end_point=self.p[unit].goto[-1] , check=True)
+                    
+                #     action = None
+                #     return action , unit
+
+                if n.player in self.eTeam:
 
                     print(unit , " => BOMB" , "END NODE : " , self.p[unit].id)
 
@@ -1024,11 +1095,9 @@ class Gameboard:
 
                     print("PLAYER : " , n.id)
 
-
-
                     action , unit , f_unit = self.p[n.player].move_bro(f_unit=unit, path=path)
 
-                    self.p[f_unit].reserved_node = n.id
+                    # self.p[f_unit].reserved_node = n.id
 
                     return action , unit
 
@@ -1122,10 +1191,10 @@ class Gameboard:
 
                         return action , unit
     
-                # elif n.id == start.id:
-                #     print(unit , " => SAME SPOT")
-                #     self.p[unit].next_node(None)
-                #     return None , unit
+                elif n.id == start.id:
+                    print(unit , " => SAME SPOT")
+                    self.p[unit].next_node(None)
+                    return None , unit
 
                 elif n.col > start.col: 
                     print(unit , " => RIGTH  ", n.id)
@@ -1133,6 +1202,7 @@ class Gameboard:
                     return self.actions[3] , unit
 
                 elif n.col < start.col:
+
                     print(unit , " => LEFT ", n.id)
                     self.p[unit].next_node(self.actions[2])
                     return self.actions[2] , unit
@@ -1166,7 +1236,7 @@ class Gameboard:
     #     pass
 
     # def path_finding(self , unit , end_point , check=False , once_check=False): 
-    def path_finding(self , unit , end_point , check=False , need_path=False): 
+    def path_finding(self , unit , end_point , check=False ): 
         
         if check:
             self.update_board(self.gameState , tick_number=self.tick_number)
@@ -1184,7 +1254,9 @@ class Gameboard:
             end_point = self.linear_fucn(end_point)
 
         print(" END POINT " , end_point)
+
         end = self.grid[end_point]
+        print("END DETAILS : " , end.obj_type , end.id )
 
         if end.weight == float("inf"): # NEED TO ADD DIAGNOL NEIBOUR # USE WHILE
 
@@ -1225,21 +1297,9 @@ class Gameboard:
 
             if current == end:
                 
-                # if need_path:
-
-                #     walk = []
-
-                #     while current in path:
-                #         current = path[current]
-                
-                #         if current != start:
-                #             walk.append(current)
-
-                    # path.insert(0 , end)
-
-
                 action , unit_player = self.take_action(came_from=path, current=current , start=start ,end=end ,unit=unit) 
 
+                print(" PATH FIND RETURN : " , action , unit_player)
                 return action , unit_player
 
             open_set_hash.remove(current)
@@ -1281,24 +1341,34 @@ class Gameboard:
         # evade_2 = self.bomb_monitor(unit=unit_id)
         evade = self.bomb_evade(unit=unit_id)
         detonate_action , unit_id = self.bomb_detonate(unit_id) #IF MY UNIT AREN'T THERE DETONATE 
+        escape = self.on_fire(unit=unit_id)
 
+        if escape != None:
+            action , unit_id = self.path_finding(unit=unit_id , end_point=escape)
+            
 
-        if evade != None:
+        # elif evade != None:
+        elif evade != None:
                     
 
-            if evade == self.p[unit_id].id:
+            # if evade == self.p[unit_id].id:
 
-                print(" ##### ANGAYE NILLU DAWW ##### ")
-                action , unit_id = self.path_finding(unit=unit_id , end_point=self.p[unit_id].id)
+            #     print(" ##### ANGAYE NILLU DAWW ##### ")
+            #     action , unit_id = self.path_finding(unit=unit_id , end_point=self.p[unit_id].id)
 
-            else:
-                print("**********", self.p[unit_id].goto[-1], "**********")
-                print("**********", evade , "**********")
+            # else:
+            #     print("**********", self.p[unit_id].goto[-1], "**********")
+            #     print("**********", evade , "**********")
 
-                action , unit_id = self.path_finding(unit=unit_id , end_point=evade)
+            #     action , unit_id = self.path_finding(unit=unit_id , end_point=evade)
+            print(" ##### ANGAYE NILLU DAWW ##### ")
+            print("**********", self.p[unit_id].goto[-1], "**********")
+            print("**********", evade , "**********")
+
+            action , unit_id = self.path_finding(unit=unit_id , end_point=evade)
 
 
-            print(" DETONATE FUNCTION RETURN ")
+            # print(" DETONATE FUNCTION RETURN ")
 
             # if detonate_action != None:
             #     action = detonate_action
@@ -1323,11 +1393,11 @@ class Gameboard:
 
             # action , unit_id = self.bomb_detonate(unit_id) #IF MY UNIT AREN'T THERE DETONATE 
 
-            print(" DETONATE FUNCTION RETURN ")
 
             # if action != None:
             #     pass
             if detonate_action != None:
+                print(" DETONATE FUNCTION RETURN ")
                 action = detonate_action
 
             else:
@@ -1365,11 +1435,25 @@ class Gameboard:
 
                 # action , unit_id = self.path_finding(unit=unit_id , end_point=self.p[unit_id].goto[-1])
                 # action , unit_id = self.path_finding(unit=unit_id , end_point=self.p[unit_id].goto[0])
-        
-        for i in self.myTeam:
-            if self.p[unit_id].next_node_pos == self.p[i].next_node_pos and i != unit_id:
-                self.p[unit_id].next_node(None)
+    
+        # for i in self.board.p:
 
+        #     if self.board.p[unit_id].next_node_pos == self.board.p[i].next_node_pos and i != unit_id:
+        #         print("ENTERING")
+        #         print("NEXT NODE :",unit_id ," " ,self.board.p[unit_id].next_node_pos)
+                
+        #         action = None
+
+        for i in self.myTeam:
+
+            print("NEXT NODE :",i ," " ,self.p[i].next_node_pos)
+
+            if self.p[unit_id].next_node_pos == self.p[i].next_node_pos and i != unit_id:
+
+                print("ENTERING")
+                print("NEXT NODE :",unit_id ," " ,self.p[unit_id].next_node_pos)
+
+                self.p[unit_id].next_node(None)
                 action = None
 
 
