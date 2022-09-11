@@ -58,10 +58,11 @@ class Agent():
         # my_units = self.board.active_agents(my_units)
 
         self.board.myTeam = my_units
+        self.board.update_board(self._client._state , tick_number)  #ONE TIME UPDATE      
         
         for unit_id in my_units:
             
-            self.board.update_board(self._client._state , tick_number)       
+            # self.board.update_board(self._client._state , tick_number)       
             
             # try:
 
@@ -73,6 +74,7 @@ class Agent():
 
             action , unit_id = self.board.AI(unit_id=unit_id)
 
+            # action , unit_id = self.board.AI(unit_id=unit_id)
 
             if action in ["up", "left", "right", "down"]:
                 await self._client.send_move(action, unit_id)
