@@ -6,6 +6,7 @@ import random
 from collections import deque
 
 
+
 class player:
 
     def __init__(self, grid, Gameboard, agent_id, unit_id, hp):
@@ -201,16 +202,16 @@ class player:
                 self.updEn(e)
                 print('eINFO ..................')
                 
-            try:
-                self.board.update_board(self._client._state , tick_number)       
+            # try:
+            #     self.board.update_board(self._client._state , tick_number)       
 
-                action , unit_id = self.board.AI(unit_id=unit_id)
+            #     action , unit_id = self.board.AI(unit_id=unit_id)
 
-            except Exception as e:
-                action = None
-                print(" [ ERROR ] " , e)
+            # except Exception as e:
+            #     action = None
+            #     print(" [ ERROR ] " , e)
             
-                print(self.eInfo)
+            #     print(self.eInfo)
 
     def kingAtk(self, unit):
         self.updEn(unit)
