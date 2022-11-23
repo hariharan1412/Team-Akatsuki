@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 #OUR IMPORTS    
 from queue import PriorityQueue
 from operator import itemgetter
@@ -879,6 +880,8 @@ class Gameboard:
         return None , unit
 
     
+=======
+>>>>>>> main
 
     def bomb_evade(self , unit=None , end_node=None , teamCheck=False) -> int: #IF RADIUS IS EQUAL TO 2 
 
@@ -894,8 +897,11 @@ class Gameboard:
     
         visited = []
 
+<<<<<<< HEAD
         check = False
 
+=======
+>>>>>>> main
         safe_spot = None
 
         self.attack_spot = set() #MAY BE I CAN GET THIS INFO FROM BOMB_DETONATE
@@ -908,6 +914,7 @@ class Gameboard:
 
 
             bomb = b
+<<<<<<< HEAD
 
             #USING A* I CAN GET NUMBER OF STEPS TO THAT BOMB
 
@@ -932,6 +939,17 @@ class Gameboard:
         self.render(atk=True , atk_spot=self.attack_spot)
 
         if check:
+=======
+            if 2*self.h(b , self.p[unit]) - 3 < b.blast_diameter:
+                
+                print(" CHECK BOMB " , b.id)
+
+                bomb_blast = bomb.add_neibour(self.grid , directed=True , diameter=bomb.blast_diameter) #RETURN LIST 
+
+                self.attack_spot.update(bomb_blast)
+
+        if [2*self.h(b , self.p[unit]) - 3 < b.blast_diameter for b in self.bombs]:
+>>>>>>> main
 
             q = deque()
             q.append(start)
@@ -947,10 +965,16 @@ class Gameboard:
 
                     neibours = a.add_neibour(self.grid , evade=True) #NEED TO CHECK WETHER ALL ARE INFINITY  
 
+<<<<<<< HEAD
                     flag = True
                     # self.attack_spot.add(a.id)
                 
                     for i in neibours: # => CHECK ALL NEIBOUR AND GIVE START AS SAFE SPOT
+=======
+                    # self.attack_spot.add(a.id)
+                
+                    for i in neibours: 
+>>>>>>> main
                         
                         # 135 -> 120, 136
                         if i.is_visited == False:
@@ -969,6 +993,10 @@ class Gameboard:
                     safe_spot = a #MAY BE THE START POSITION OF THE UNIT #if start.id == a.id => None
                     break
 
+<<<<<<< HEAD
+=======
+                            # return None
+>>>>>>> main
 
             start.is_visited = False
             for i in visited:
@@ -994,6 +1022,7 @@ class Gameboard:
             return safe_spot
      
 
+<<<<<<< HEAD
     def take_action(self , came_from , current , start , end , unit ):
         
         print("UNIT : " , self.p[unit].goto)
@@ -1462,3 +1491,26 @@ class Gameboard:
 
         return action , unit_id
         
+=======
+
+
+    if evade == self.p[unit_id].id:
+        print(" ##### ANGAYE NILLU DAWW ##### ")
+        action , unit_id = self.path_finding(unit=unit_id , end_point=self.p[unit_id].id)
+
+        # if evade not in self.p[unit_id].goto:
+
+        #     self.p[unit_id].goto.append(evade)
+
+        # else:
+
+        #     self.p[unit_id].remove(evade)
+
+
+        # self.p[unit_id].goto.append(evade)
+        # print(" SAFE SPOT " , self.safe_spot , " TICK NUMBER " , self.tick_number)
+
+        if evade != self.p[unit_id].id:
+            print("**********", self.p[unit_id].goto[-1], "**********")
+            action , unit_id = self.path_finding(unit=unit_id , end_point=evade)
+>>>>>>> main
